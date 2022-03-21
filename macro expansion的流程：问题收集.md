@@ -104,7 +104,7 @@ impl Dummy {
 
 #### Path
 
-实际上是不会有self既是标识符又是关键字这种二义性的，认为可能有二义性的想法忽略了rust宏的实现策略。一个词法单元具体是标识符还是关键字在语法分析阶段就已经知道了，而宏的处理流程中的一步就是从tokenstream构造AstFragment，最终合并AstFragment得到一个完整的AST。这个案例的错误发生在遍历AST的过程中，准确的报错点在[smart_resolve_path_segment](https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_resolve/late.rs.html#1924-2094)，错误消息由[smart_resolve_report_errors](https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_resolve/late/diagnostics.rs.html#132-609)输出。smart_resolve_path_segment负责了所有的路径语法的语义求解，此例中self符合[路径表达式](https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_driver/lib.rs.html#195-435)的形式文法，但单独一个self关键字是没有值语义的，而let语句需要一个具体的值。
+严格地说，每个关键字确实同时又是标识符，编译器在词法分类上这么看待标识符和关键字，但是在语法分析阶段标识符和关键字又相互区分开了，因为两者能出现的语法位置不同所以语义不一样。既是关键字又是标识符的看法只停留在词法分析的阶段，忽略了rust宏的实现策略。我们知道语法分析阶段是为了构建AST，而宏的处理流程中的一步就是从tokenstream构造AstFragment，最终合并这些AstFragment得到一个完整的AST。但这个案例并不是发生在语法分析阶段，此例中self符合[路径表达式](https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_driver/lib.rs.html#195-435)的形式文法，案例的错误是语义的问题，self的语义是module，语法分析阶段是无法知道模块语义的。模块语义的解析发生在遍历AST的过程中，准确的报错点在[smart_resolve_path_segment](https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_resolve/late.rs.html#1924-2094)，错误消息由[smart_resolve_report_errors](https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_resolve/late/diagnostics.rs.html#132-609)输出。smart_resolve_path_segment负责了所有的路径语法的语义求解，但是let语句需要一个具体的值，self关键字在这里是没有值语义的。
 
 ```
 macro_rules! make_self_mutable {
